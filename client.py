@@ -4,32 +4,91 @@ from threading import Thread
 SERVER_IP = "127.0.0.1"
 PORT = 80
 DATA_RECEIVED_SIZE = 1024
+OK_DATA_LEN = 2
+OK_RESPONSE = "OK"
+HOST_NAME_LEN_LEN = 4
 
 
 class Client(object):
     def __init__(self):
         self.socket = socket.socket()
+        self.server_functions_class = ServerFunctions(self.socket)
 
-    def connecting_to_the_server(self):
+    def start(self):
         """
         Connecting to the server.
+        Sends the hostname to the server.
         """
         self.socket.connect((SERVER_IP, PORT))
-        self.socket.send(socket.gethostname())
+        self.send_host_name()
 
-    def sending_a_msg(self):
+    def send_host_name(self):
         """
-        Sending a msg to the server.
+        Sends the host name to the server using the host name protocol.
         """
-        self.socket.send(raw_input("insert your msg here..."))
+        self.socket.send(str(len(socket.gethostname())).zfill(4))
+        if self.socket.recv(OK_DATA_LEN) == OK_RESPONSE:
+            self.socket.send(socket.gethostname())
 
-    def receive_msg_from_server(self):
+    def receiving_all_msgs(self):
         """
-        A thread that waits for msgs from the server all the time.
+        Opens a thread (self.server_functions_class.receive_msg_from_server_thread).
         """
-        self.socket.recv(DATA_RECEIVED_SIZE)
+        receiving_msg_from_server_thread = Thread(target=self.server_functions_class.receive_msg_from_server_thread)
+        receiving_msg_from_server_thread.start()
+
+
+class ServerFunctions(object):
+    """
+    A Class for the client to use.
+    The class holds the functions the clients use to communicate with the server.
+    """
+    def __init__(self, client_socket):
+        self.client_socket = client_socket
+
+    def change_host_name_to_16_bytes(self, host_name):
+        """
+        Input: The client's host name.
+        Output: The client's in 16 bytes.
+        """
+        client_host_name = socket.gethostname()
+        while len(client_host_name) < HOST_NAME_LEN_LEN:
+            client_host_name += ""
+
+
+    def waits_for_data_from_client_to_send_to_the_server(self):
+        """
+        A function to a thread that waits for data from the client.
+        Sends the data that received to the server.
+        """
+        while True:
+            self.client_socket.send(raw_input("insert your msg here..."))
+
+    def get_full_size_data(self, data_len):
+        """
+        Input: The length of the data that needs to be received.
+        Output: The data that was received.
+        description: A function that receives data from the server, and checks to see if all the data has been received.
+                     If not, it waits until all the data was received.
+        """
+        data = self.client_socket.recv(data_len)
+        while len(data) < data_len:
+            data += self.client_socket.recv(data_len-len(data))
+        return data
+
+    def receive_msg_from_server_thread(self):
+        """
+        A function to a thread that waits for msgs from the server all the time.
+        """
+        while True:
+            data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
+            print data_from_server
+
 
 if __name__ == "__main__":
-    da_clientos = Client()
+    #da_clientos = Client()
     #da_clientos.connecting_to_the_server()
     #da_clientos.receive_msg_from_server()
+    hostname = "Comp-06"
+    hostname = hostname.zfill(6)
+    print hostname
