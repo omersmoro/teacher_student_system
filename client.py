@@ -89,6 +89,3 @@ if __name__ == "__main__":
     #da_clientos = Client()
     #da_clientos.connecting_to_the_server()
     #da_clientos.receive_msg_from_server()
-    hostname = "Comp-06"
-    hostname = hostname.zfill(6)
-    print hostname

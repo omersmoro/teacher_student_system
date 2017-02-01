@@ -40,10 +40,6 @@ class Server(object):
             print "new client"
             self.client_function_class.receive_msgs_from_new_clients_thread(client_socket)
 
-    def open_chat(self):
-        """
-        """
-
 
 class ClientFunctions(object):
     """
@@ -52,36 +48,52 @@ class ClientFunctions(object):
     def __init__(self):
         self.clients_data = []
 
-    def send_msg_thread(self, client_host_name):
+    def open_chat(self, client_socket):
         """
-        Input: A client host name to check which client to open a chat with.
-        Description: checks to see with which client the server wants to open a chat,
-                     and opens the chat.
+        Input: The client socket.
+        Description: When a new client is connected to the server, 2 threads
+                     are opened(self.send_a_msg_to_a_client_thread,
+                     self.receive_a_msg_from_a_client).
         """
-        for client_socket in self.clients_data:
-            if client_socket.host_name == client_host_name:
-                client_socket.send(raw_input("insert your msg here..."))
+        client_data = ClientData(client_socket)
+        self.clients_data.append(client_data)
+        client_data.get_client_host_name()
+        receiving_msg_from_client_thread = Thread(target=self.receive_a_msg_from_a_client_thread, args=[client_data])
+        receiving_msg_from_client_thread.start()
+        sending_msg_to_client_thread = Thread(target=self.send_a_msg_to_a_client_thread, args=[client_data])
+        sending_msg_to_client_thread.start()
+
+    @staticmethod
+    def send_a_msg_to_a_client_thread(client_data):
+        """
+        Input: A client's data.
+        Description: A function for a thread that waits for the user to
+                     insert msgs to send to the client, and sends the msgs.
+        """
+        client_socket = client_socket = client_data.socket
+        while True:
+            client_socket.send(raw_input("insert your msg here..."))
 
     def receive_msgs_from_new_clients_thread(self, client_socket):
         """
         Input: The client socket.
-        Description: When a new client is connected to the server, a thread
-                     is opened that waits for a msg from a client.
+        Description: When a new client is connected to the server, 2 threads
+                     are opened(self.send_a_msg_to_a_client_thread,
+                     self.receive_a_msg_from_a_client)
         """
         client_data = ClientData(client_socket)
         self.clients_data.append(client_data)
-        receiving_msg_from_client_thread = Thread(target=self.receive_a_msg_from_a_client, args=[client_data])
+        receiving_msg_from_client_thread = Thread(target=self.receive_a_msg_from_a_client_thread, args=[client_data])
         receiving_msg_from_client_thread.start()
 
     @staticmethod
-    def receive_a_msg_from_a_client(client_data):
+    def receive_a_msg_from_a_client_thread(client_data):
         """
         Input: The client socket.
         Description: A function for a thread that waits for
                      data from the client socket and prints it.
         """
-        client_data.get_client_host_name()
-        client_socket = client_data.socket
+        client_socket = client_socket = client_data.socket
         while True:
             msg_from_client = client_socket.recv(DATA_RECEIVED_SIZE)
             print msg_from_client
