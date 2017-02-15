@@ -1,5 +1,7 @@
 import socket
 from threading import Thread
+from PIL import ImageGrab
+import time
 
 
 SERVER_IP = "127.0.0.1"
@@ -93,10 +95,18 @@ class ClientFunctions(object):
         Description: A function for a thread that waits for
                      data from the client socket and prints it.
         """
-        client_socket = client_socket = client_data.socket
+        client_socket = client_data.socket
         while True:
             msg_from_client = client_socket.recv(DATA_RECEIVED_SIZE)
             print msg_from_client
+
+    @staticmethod
+    def screen_shot():
+        """
+        Takes a screen shot and saves it under the
+        name "screen_capture" as a jpg.
+        """
+        ImageGrab.grab().save("screen_capture.jpg", "JPEG")
 
 
 class ClientData(object):
@@ -121,7 +131,8 @@ class ClientData(object):
 
 
 if __name__ == "__main__":
-    da_server = Server()
-    da_server.start()
-    if raw_input("send a msg?") == "yes":
-        da_server.client_function_class.send_msg(da_server.client_function_class.clients[0].gethostname())
+    #da_server = Server()
+    #da_server.start()
+    #if raw_input("send a msg?") == "yes":
+    #    da_server.client_function_class.send_msg(da_server.client_function_class.clients[0].gethostname())
+    ClientFunctions.screen_shot()

