@@ -108,6 +108,14 @@ class ClientFunctions(object):
         """
         ImageGrab.grab().save("screen_capture.jpg", "JPEG")
 
+    @staticmethod
+    def screen_sho():
+        """
+        Takes a screen shot and saves it under the
+        name "screen_capture" as a jpg.
+        """
+        ImageGrab.grab().save("screen_capture.jpg", "JPEG")
+
 
 class ClientData(object):
     """
