@@ -2,8 +2,12 @@ import socket
 from threading import Thread
 import pythoncom
 import pyHook
-from PIL import ImageGrab
+from PIL import ImageGrab, Image
 import time
+import StringIO
+import base64
+import pickle
+import Tkinter
 
 SERVER_IP = "127.0.0.1"
 PORT = 69
@@ -90,16 +94,38 @@ class ServerFunctions(object):
             data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
             print data_from_server
 
+    def understand_the_msg(self, string):
+        """
+        Receives: a string.
+        Return:
+        Description: The function understands what data the client will receive next,
+                     whether it's a string, an img or anything else.
+        """
+        #if string ==
+
     @staticmethod
     def screen_shot():
         """
         Takes a screen shot and saves it as a StringIO.
-        Return: The data of the image.
+        Encoding the data of the image in base 64, and then loads it to pickle.
+        Return: The data of the image (encoded and in a pickle).
         """
-        import StringIO
-        string_io = StringIO.StringIO()
+        screen_shot_string_io = StringIO.StringIO()
         ImageGrab.grab().save(string_io, "JPEG")
-        return string_io.getvalue()
+        screen_shot_string_io.seek(0)
+        return pickle.dumps(screen_shot_string_io)
+
+    @staticmethod
+    def showing_screen_shots(img_data):
+        """
+
+        """
+        screen_shot_img = pickle.loads(img_data)
+        img = Image.open(screen_shot_img)
+        screen_io = StringIO.StringIO()
+        img.save(scree)
+        img = base64.b64decode(img, 'utf-8')
+        img.open()
 
 
 def lock(event):
@@ -121,5 +147,16 @@ def keyboard_lock():
 
 
 if __name__ == "__main__":
-    client = Client()
-    client.start()
+    #client = Client()
+    #client.start()
+    string_io = StringIO.StringIO()
+    ImageGrab.grab().save(string_io, "JPEG")
+    #image_file = StringIO.StringIO(open(string_io.getvalue(), 'rb').read())
+    #im = Image.open(image_file)
+    print string_io.getvalue()
+    root = Tkinter.Tk()
+    canvas = Tkinter.Canvas(root, width =1224,height=1000)
+    ImageGrab.grab()
+    logo = Tkinter.PhotoImage(file='images.jpg')
+    canvas.create_image(0, 0, image=logo) #Change 0, 0 to whichever coordinates you need
+    root.mainloop()
