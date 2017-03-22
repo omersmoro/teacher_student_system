@@ -2,12 +2,16 @@ import socket
 from threading import Thread
 from PIL import ImageGrab
 import time
-import pyHook
 import base64
+import Queue
 
 
-SERVER_IP = "127.0.0.1"
-PORT = 69
+SERVER_IP = "0.0.0.0"
+LOCAL_IP = "127.0.0.1"
+CLIENT_PORT = 1025
+CLIENT_STREAM_PORT = 1026
+LOCAL_PORT = 1027
+GUI_STREAM_PORT = 1028
 MAX_CLIENTS = 20
 DATA_RECEIVED_SIZE = 1024
 HOST_NAME_LEN_RECEIVED_SIZE = 4
@@ -22,9 +26,17 @@ class Server(object):
     The server has many functions for the Treads Class to use, and many functions for the user to use.
     """
     def __init__(self):
+
         self.server_socket = socket.socket()
-        self.server_socket.bind((SERVER_IP, PORT))
+        self.server_socket.bind((SERVER_IP, CLIENT_PORT))
         self.server_socket.listen(MAX_CLIENTS)
+
+        self.server_stream_socket = socket.socket()
+        self.server_stream_socket.bind((SERVER_IP, CLIENT_STREAM_PORT))
+        self.server_stream_socket.listen(MAX_CLIENTS)
+
+        self.clients_queues = list()
+
         self.client_function_class = ClientFunctions()
 
     def start(self):
@@ -41,9 +53,13 @@ class Server(object):
         Adds the client to the clients list.
         """
         while True:
+            client_stream_socket, client_address = self.server_stream_socket.accept()
             client_socket, client_address = self.server_socket.accept()
             print "new client"
             self.client_function_class.receive_msgs_from_new_clients(client_socket)
+
+    def creating_client_queue(self):
+        #TODO
 
 
 class ClientFunctions(object):
@@ -144,6 +160,32 @@ class ClientData(object):
         Output: The client's host name.
         """
         return self.hostname
+
+
+class SessionWithGui(object):
+    """
+    A class to communicate with the gui.
+    """
+    def __init__(self):
+        self.server_socket = socket.socket()
+        self.server_socket.bind((LOCAL_IP, LOCAL_PORT))
+        self.server_socket.listen()
+
+    def connect_to_gui(self):
+        """
+        Connect to the gui with the socket.
+        """
+        try:
+            gui_socket, gui_address = self.server_socket.accept()
+            return gui_socket
+
+        except socket.error:
+            print str(socket.error)
+
+    def send_screen_shot(self):
+        """
+        Taking the screen shots from the queue and sending them to the gui.
+        """
 
 
 if __name__ == "__main__":

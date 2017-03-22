@@ -10,7 +10,8 @@ import pickle
 import Tkinter
 
 SERVER_IP = "127.0.0.1"
-PORT = 69
+PORT = 1025
+STREAM_PORT = 1026
 DATA_RECEIVED_SIZE = 1024
 OK_DATA_LEN = 2
 OK_RESPONSE = "OK"
@@ -123,7 +124,7 @@ class ServerFunctions(object):
         screen_shot_img = pickle.loads(img_data)
         img = Image.open(screen_shot_img)
         screen_io = StringIO.StringIO()
-        img.save(scree)
+        img.save(screen_io)
         img = base64.b64decode(img, 'utf-8')
         img.open()
 
@@ -147,8 +148,9 @@ def keyboard_lock():
 
 
 if __name__ == "__main__":
-    #client = Client()
-    #client.start()
+    client = Client()
+    client.start()
+
     string_io = StringIO.StringIO()
     ImageGrab.grab().save(string_io, "JPEG")
     #image_file = StringIO.StringIO(open(string_io.getvalue(), 'rb').read())
