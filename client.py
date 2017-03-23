@@ -47,15 +47,6 @@ class ServerFunctions(object):
     def __init__(self, client_socket):
         self.client_socket = client_socket
 
-    def change_host_name_to_16_bytes(self, host_name):
-        """
-        Input: The client's host name.
-        Output: The client's in 16 bytes.
-        """
-        client_host_name = socket.gethostname()
-        while len(client_host_name) < HOST_NAME_LEN_LEN:
-            client_host_name += ""
-
     def waits_for_data_from_client_to_send_to_the_server(self):
         """
         A function to a thread that waits for data from the client.
@@ -84,15 +75,6 @@ class ServerFunctions(object):
         while True:
             data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
             print data_from_server
-
-    def understand_the_msg(self, string):
-        """
-        Receives: a string.
-        Return:
-        Description: The function understands what data the client will receive next,
-                     whether it's a string, an img or anything else.
-        """
-        #if string ==
 
     @staticmethod
     def screen_shot():

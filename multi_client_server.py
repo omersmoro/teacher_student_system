@@ -51,13 +51,14 @@ class Server(object):
         Adds the client to the clients list.
         """
         while True:
-            client_stream_socket, client_address = self.server_stream_socket.accept()
-            client_socket, client_address = self.server_socket.accept()
-            print "new client"
-            self.client_function_class.open_chat(client_socket)
-
-    def creating_client_queue(self):
-
+            if len(self.client_function_class.clients_data) < MAX_CLIENTS:
+                client_stream_socket, client_address = self.server_stream_socket.accept()
+                client_socket, client_address = self.server_socket.accept()
+                print "new client"
+                self.client_function_class.open_chat(client_socket, client_stream_socket, client_address)
+            else:
+                print "Max clients reached, can't add more clients."
+                break
 
 
 class ClientFunctions(object):
@@ -67,19 +68,21 @@ class ClientFunctions(object):
     def __init__(self):
         self.clients_data = []
 
-    def open_chat(self, client_socket):
+    def open_chat(self, client_socket, client_stream_socket, client_address):
         """
         Input: The client socket.
         Description: When a new client is connected to the server, 2 threads
                      are opened(self.send_a_msg_to_a_client_thread,
                      self.receive_a_msg_from_a_client).
         """
-        client_data = ClientData(client_socket)
+        client_data = ClientData(client_socket, client_stream_socket, client_address)
         self.clients_data.append(client_data)
         receiving_msg_from_client_thread = Thread(target=self.receive_a_msg_from_a_client_thread, args=[client_data])
         receiving_msg_from_client_thread.start()
         sending_msg_to_client_thread = Thread(target=self.send_a_msg_to_a_client_thread, args=[client_data])
         sending_msg_to_client_thread.start()
+        receiving_stream_from_client_thread = Thread(target=self.receive_stream, args=[client_data])
+        receiving_stream_from_client_thread.start()
 
     @staticmethod
     def send_a_msg_to_a_client_thread(client_data):
@@ -95,7 +98,7 @@ class ClientFunctions(object):
     @staticmethod
     def receive_a_msg_from_a_client_thread(client_data):
         """
-        Input: The client socket.
+        Input: A client's data.
         Description: A function for a thread that waits for
                      data from the client socket and prints it.
         """
@@ -116,16 +119,42 @@ class ClientFunctions(object):
         ImageGrab.grab().save(string_io, "JPEG")
         return base64.b64encode(string_io.getvalue(), 'utf-8')
 
+    def receive_stream(self, client_data):
+        """
+        Input: A client's data.
+        Description: A function for a thread that gets the stream of
+                     a client and puts it into his stream queue.
+        """
+        client_stream_socket = client_data.client_stream_socket
+        while True:
+            len_of_img = client_stream_socket.recv()
+            img = self.get_full_size_data(len_of_img, client_stream_socket)
+            client_data.stream_queue.put(img)
+
+    @staticmethod
+    def get_full_size_data(data_len, client_stream_socket):
+        """
+        #NOT IN USE
+        Input: The length of the data that needs to be received.
+        Output: The data that was received.
+        description: A function that receives data from the server, and checks to see if all the data has been received.
+                     If not, it waits until all the data was received.
+        """
+        data = client_stream_socket.recv(data_len)
+        while len(data) < data_len:
+            data += client_stream_socket.recv(data_len-len(data))
+        return data
+
 
 class ClientData(object):
     """
     A Class to hold the information of a client.
     """
-    def __init__(self, client_socket, client_stream_socket, client_address, stream_queue):
+    def __init__(self, client_socket, client_stream_socket, client_address):
         self.socket = client_socket
         self.stream_socket = client_stream_socket
         self.address = client_address
-        self.stream_queue = stream_queue
+        self.stream_queue = Queue.Queue()
 
 
 class SessionWithGui(object):
