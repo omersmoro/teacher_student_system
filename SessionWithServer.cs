@@ -88,6 +88,15 @@ namespace teacher_gui_windows_forms
 
         private void AddImage(IPEndPoint clientSocket)
         {
+            while (true)
+            {
+                clientSocket.Receive()
+            }
+        }
+        
+        public void AddImage(Image image)
+>>>>>>> origin/master
+        {
             ///<summary>
             ///When a new client is added his image is added
             ///to the ImageList thus appear on the gui.
@@ -122,7 +131,6 @@ namespace teacher_gui_windows_forms
             }
 
         }
-
 
     }
 

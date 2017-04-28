@@ -91,7 +91,6 @@ class SessionWithClient(object):
         Input: The client socket.
         Description: When a new client is connected to the server, 2 threads are
                      opened(self.receive_a_msg_from_a_client,
-                     self.connecting_stream_from_client_to_gui).
         """
 
         client_data = ClientData(client_socket, client_stream_socket, client_address, gui_client_socket)
