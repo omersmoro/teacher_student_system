@@ -11,12 +11,13 @@ using System.Windows.Forms;
 namespace teacher_gui_windows_forms
 {
     public partial class TeacherGUI : Form
-    {
+    {           
+        SessionWithServer session;
+
         public TeacherGUI()
         {
             InitializeComponent();
+            session = new SessionWithServer(this);
         }
-
-        //    public add 
     }
 }

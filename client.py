@@ -10,8 +10,9 @@ import pickle
 import Tkinter
 
 SERVER_IP = "127.0.0.1"
-PORT = 1025
-STREAM_PORT = 1026
+SERVER_PORT = 1025
+STREAM_PORT = 1028
+
 DATA_RECEIVED_SIZE = 1024
 OK_DATA_LEN = 2
 OK_RESPONSE = "OK"
@@ -27,9 +28,8 @@ class Client(object):
     def start(self):
         """
         Connecting to the server.
-        Sends the hostname to the server.
         """
-        self.socket.connect((SERVER_IP, PORT))
+        self.socket.connect((SERVER_IP, SERVER_PORT))
 
     def receiving_all_msgs(self):
         """
@@ -85,7 +85,7 @@ class SessionWithServer(object):
 
     def send_stream(self):
         """
-
+        Description: Sends the stream of the screen to the server.
         """
         while True:
             image = self.screen_shot()
@@ -93,14 +93,12 @@ class SessionWithServer(object):
             self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
             self.stream_socket.sendto(image, (SERVER_IP, STREAM_PORT))
 
-
-
     @staticmethod
     def screen_shot():
         """
         Takes a screen shot and saves it as a StringIO.
-        Encoding the data of the image in base 64, and then loads it to pickle.
-        Return: The data of the image (encoded and in a pickle).
+        Encoding the data of the image in base 64.
+        Return: The data of the image (encoded).
         """
         screen_shot_string_io = StringIO.StringIO()
         ImageGrab.grab().save(string_io, "JPEG")

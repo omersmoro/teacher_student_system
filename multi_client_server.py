@@ -16,6 +16,8 @@ CLIENT_STREAM_PORT = 1026
 LOCAL_PORT = 1027
 LOCAL_STREAM_PORT = 1028
 
+GUI_STREAM_PORT = 1029
+
 MAX_CLIENTS = 20
 DATA_RECEIVED_SIZE = 1024
 
@@ -27,17 +29,13 @@ class Server(object):
     """
     Server Class.
     The server to the teacher-student program.
-    The server has many functions for the Treads Class to use, and many functions for the user to use.
+    The server has many functions for the Threads Class to use, and many functions for the user to use.
     """
     def __init__(self):
 
         self.server_socket = socket.socket()
         self.server_socket.bind((SERVER_IP, CLIENT_PORT))
         self.server_socket.listen(MAX_CLIENTS)
-
-        self.server_stream_socket = socket.socket()
-        self.server_stream_socket.bind((SERVER_IP, CLIENT_STREAM_PORT))
-        self.server_stream_socket.listen(MAX_CLIENTS)
 
         self.session_with_client_class = SessionWithClient()
 
@@ -59,16 +57,14 @@ class Server(object):
         while True:
             if len(self.session_with_client_class.clients_data) < MAX_CLIENTS:
 
-                client_stream_socket, client_address = self.server_stream_socket.accept()
-
                 client_socket, client_address = self.server_socket.accept()
 
-                gui_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                gui_stream_socket.connect((LOCAL_IP, LOCAL_STREAM_PORT))
+                receiving_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                receiving_stream_socket.bind((LOCAL_IP, LOCAL_STREAM_PORT))
 
                 print "new client"
-                self.session_with_client_class.open_chat(client_socket, client_stream_socket,
-                                                         client_address, gui_stream_socket)
+                self.session_with_client_class.open_chat(client_socket, receiving_stream_socket,
+                                                         client_address)
             else:
                 print "Max clients reached, can't add more clients."
                 break
@@ -79,7 +75,6 @@ class Server(object):
         """
 
 
-
 class SessionWithClient(object):
     """
     A Class to organize all the clients functions, for the Server Class to use.
@@ -87,20 +82,21 @@ class SessionWithClient(object):
     def __init__(self):
         self.clients_data = []
 
-    def open_chat(self, client_socket, client_stream_socket, client_address, gui_client_socket):
+    def open_chat(self, client_socket, client_address, gui_client_socket):
         """
         Input: The client socket.
         Description: When a new client is connected to the server, 2 threads are
                      opened(self.receive_a_msg_from_a_client,
         """
 
-        client_data = ClientData(client_socket, client_stream_socket, client_address, gui_client_socket)
+        client_data = ClientData(client_socket, client_address, gui_client_socket)
         self.clients_data.append(client_data)
 
         receiving_msg_from_client_thread = Thread(target=self.receive_a_msg_from_a_client_thread, args=[client_data])
         receiving_msg_from_client_thread.start()
 
-        receiving_stream_from_client_thread = Thread(target=self.connecting_stream_from_client_to_gui, args=[client_data])
+        receiving_stream_from_client_thread = Thread(target=self.connecting_stream_from_client_to_gui,
+                                                     args=[client_data])
         receiving_stream_from_client_thread.start()
 
     def send_a_msg_to_a_client(self, ip, text):
@@ -142,20 +138,6 @@ class SessionWithClient(object):
         screen_shot_string_io.seek(0)
         return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
 
-    def connecting_stream_from_client_to_gui(self, client_data):
-        """
-        Input: A client's data.
-        Description: A function for a thread that gets the stream of
-                     a client and sends it to the gui.
-        """
-        client_stream_socket = client_data.client_stream_socket
-        while True:
-            len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
-            len_of_img = self.change_int_to_8_length(len_of_img)
-            img = self.get_full_size_data(len_of_img, client_stream_socket)
-            client_data.gui_stream_socket.send(len_of_img)
-            client_data.gui_stream_socket.send(img)
-
     @staticmethod
     def change_int_to_8_length(num):
         """
@@ -187,9 +169,8 @@ class ClientData(object):
     """
     A Class to hold the information of a client.
     """
-    def __init__(self, client_socket, client_stream_socket, client_address, gui_stream_socket):
+    def __init__(self, client_socket, client_address, gui_stream_socket):
         self.socket = client_socket
-        self.stream_socket = client_stream_socket
         self.address = client_address
         self.gui_stream_socket = gui_stream_socket
 
@@ -199,9 +180,13 @@ class SessionWithGui(object):
     A class to communicate with the gui (the main socket, not the stream sockets).
     """
     def __init__(self):
+        self.stream_socket = socket.socket()
+        self.stream_socket.connect((LOCAL_IP, GUI_STREAM_PORT))
+
         self.server_socket = socket.socket()
         self.server_socket.bind((LOCAL_IP, LOCAL_PORT))
         self.server_socket.listen()
+
         self.gui_orders_socket = self.connect_to_the_gui()
 
     def connect_to_the_gui(self):
@@ -222,6 +207,25 @@ class SessionWithGui(object):
         """
         order = self.gui_orders_socket.recv(DATA_RECEIVED_SIZE)
         return order
+
+    def connecting_stream_from_client_to_gui(self, client_data):
+        """
+        Input: A client's data.
+        Description: A function for a thread that gets the stream of
+                     a client and sends it to the gui.
+        """
+        client_stream_socket = client_data.client_stream_socket
+        gui_stream_socket = client_data.gui_stream_socket
+        while True:
+            len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
+            len_of_img = self.change_int_to_8_length(len_of_img)
+            img = self.get_full_size_data(len_of_img, client_stream_socket)
+            gui_stream_socket.send(len_of_img)
+            buffer_of_img = 0
+            while buffer_of_img + 1024 < int(len_of_img):
+                buffer_of_img += 1024
+                gui_stream_socket.send(img[buffer_of_img-1024:buffer_of_img])
+            gui_stream_socket.send(img[buffer_of_img:])
 
 
 if __name__ == "__main__":
