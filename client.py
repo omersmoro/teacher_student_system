@@ -21,7 +21,8 @@ NOT_OK_RESPONSE = "SOMETHING WENT WRONG"
 class Client(object):
     def __init__(self):
         self.socket = socket.socket()
-        self.server_functions_class = SessionWithServer(self.socket)
+        self.stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_functions_class = SessionWithServer(self.socket, self.stream_socket)
 
     def start(self):
         """
@@ -43,8 +44,9 @@ class SessionWithServer(object):
     A Class for the client to use.
     The class holds the functions the clients use to communicate with the server.
     """
-    def __init__(self, client_socket):
-        self.client_socket = client_socket
+    def __init__(self, client_socket, client_stream_socket):
+        self.socket = client_socket
+        self.stream_socket = client_stream_socket
 
     def waits_for_data_from_client_to_send_to_the_server(self):
         """
@@ -52,7 +54,7 @@ class SessionWithServer(object):
         Sends the data that received to the server.
         """
         while True:
-            self.client_socket.send(raw_input("insert your msg here..."))
+            self.socket.send(raw_input("insert your msg here..."))
 
     def get_full_size_data(self, data_len):
         """
@@ -62,9 +64,9 @@ class SessionWithServer(object):
         description: A function that receives data from the server, and checks to see if all the data has been received.
                      If not, it waits until all the data was received.
         """
-        data = self.client_socket.recv(data_len)
+        data = self.socket.recv(data_len)
         while len(data) < data_len:
-            data += self.client_socket.recv(data_len-len(data))
+            data += self.socket.recv(data_len-len(data))
         return data
 
     def receive_msg_from_server_thread(self):
@@ -72,14 +74,26 @@ class SessionWithServer(object):
         A function to a thread that waits for msgs from the server all the time.
         """
         while True:
-            data_from_server = self.client_socket.recv(DATA_RECEIVED_SIZE)
+            data_from_server = self.socket.recv(DATA_RECEIVED_SIZE)
             if data_from_server == "freeze":
                 mouse_lock()
                 keyboard_lock()
-                server_stream = Thread(target=self.server_stream, args=[])
+                server_stream = Thread(target=self.receive_stream_from_server(), args=[])
                 server_stream.start()
             else:
                 print data_from_server
+
+    def send_stream(self):
+        """
+
+        """
+        while True:
+            image = self.screen_shot()
+            len_of_img = len(image)
+            self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
+            self.stream_socket.sendto(image, (SERVER_IP, STREAM_PORT))
+
+
 
     @staticmethod
     def screen_shot():
@@ -91,10 +105,10 @@ class SessionWithServer(object):
         screen_shot_string_io = StringIO.StringIO()
         ImageGrab.grab().save(string_io, "JPEG")
         screen_shot_string_io.seek(0)
-        return pickle.dumps(screen_shot_string_io)
+        return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
 
     @staticmethod
-    def server_stream(img_data):
+    def receive_stream_from_server(img_data):
         """
 
         """

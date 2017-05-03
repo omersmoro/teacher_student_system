@@ -60,14 +60,15 @@ class Server(object):
             if len(self.session_with_client_class.clients_data) < MAX_CLIENTS:
 
                 client_stream_socket, client_address = self.server_stream_socket.accept()
+
                 client_socket, client_address = self.server_socket.accept()
 
-                gui_client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                gui_client_socket.connect((LOCAL_IP, LOCAL_STREAM_PORT))
+                gui_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                gui_stream_socket.connect((LOCAL_IP, LOCAL_STREAM_PORT))
 
                 print "new client"
                 self.session_with_client_class.open_chat(client_socket, client_stream_socket,
-                                                     client_address, gui_client_socket)
+                                                         client_address, gui_stream_socket)
             else:
                 print "Max clients reached, can't add more clients."
                 break
@@ -136,9 +137,10 @@ class SessionWithClient(object):
         Return: The data of the image.
         """
         import StringIO
-        string_io = StringIO.StringIO()
-        ImageGrab.grab().save(string_io, "JPEG")
-        return base64.b64encode(string_io.getvalue(), 'utf-8')
+        screen_shot_string_io = StringIO.StringIO()
+        ImageGrab.grab().save(screen_shot_string_io, "JPEG")
+        screen_shot_string_io.seek(0)
+        return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
 
     def connecting_stream_from_client_to_gui(self, client_data):
         """
@@ -148,10 +150,23 @@ class SessionWithClient(object):
         """
         client_stream_socket = client_data.client_stream_socket
         while True:
-            len_of_img = client_stream_socket.recv()
+            len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
+            len_of_img = self.change_int_to_8_length(len_of_img)
             img = self.get_full_size_data(len_of_img, client_stream_socket)
             client_data.gui_stream_socket.send(len_of_img)
             client_data.gui_stream_socket.send(img)
+
+    @staticmethod
+    def change_int_to_8_length(num):
+        """
+        Input: A number.
+        Output: The number (string).
+        Description: Changes the number length to 8 by adding 0s to the start of it
+        """
+
+        while len(num) < 8:
+            num = "0" + str(num)
+        return num
 
     @staticmethod
     def get_full_size_data(data_len, client_stream_socket):
@@ -162,9 +177,9 @@ class SessionWithClient(object):
         description: A function that receives data from the server, and checks to see if all the data has been received.
                      If not, it waits until all the data was received.
         """
-        data = client_stream_socket.recv(data_len)
+        data = client_stream_socket.recvfrom(data_len)
         while len(data) < data_len:
-            data += client_stream_socket.recv(data_len-len(data))
+            data += client_stream_socket.recvfrom(data_len-len(data))
         return data
 
 

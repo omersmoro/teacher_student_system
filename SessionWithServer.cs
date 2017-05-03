@@ -18,7 +18,6 @@ namespace teacher_gui_windows_forms
     {
         private int localPort = 1027;
         private string localHost = "127.0.0.1";
-        private List<IPEndPoint> clientsIPEndPoints = new List<IPEndPoint>();
         private TeacherGUI form;
         private Socket mainSocket;
 
@@ -41,42 +40,49 @@ namespace teacher_gui_windows_forms
             ///</summary>
             ///<returns>Void</returns>
             IPEndPoint IPAndPort = new IPEndPoint(Convert.ToInt64(localHost), localPort);
-            UdpClient clientSocket = new UdpClient(IPAndPort);
+            UdpClient thisComputer = new UdpClient(IPAndPort);
             IPEndPoint sender = new IPEndPoint(IPAddress.Any, localPort);
-            clientSocket.Receive(ref sender);
+            byte[] lenOfImg = new byte[7];
 
-            clientsIPEndPoints.Add(sender);
-            AddImage(sender);
-            ForStream SocketToUse = new ForStream(clientSocket, this);
+            thisComputer.Receive(ref sender);
+            thisComputer.Connect(sender);
+
+            lenOfImg = thisComputer.Receive(ref sender);
+            AddImage(thisComputer, sender);
+            ForStream SocketToUse = new ForStream(thisComputer, this);
             Thread stream = new Thread(new ThreadStart(SocketToUse.GetStream));
             stream.Start();
         }
 
-        public Image GetAnImage(Socket clientSOcket, IPEndPoint clientIPEndPoint)
+        public Image GetAnImage(UdpClient thisComputer, IPEndPoint client)
         {
             byte[] lenOfImage = new byte[7];
+            byte[] temperoryData = new byte[1024];
             byte[] encodedImg = new byte[0];
+            int offsetOfBuffer = 0;
 
-            lenOfImage = clientSocket.Receive(clientIPEndPoint);
+            lenOfImage = thisComputer.Receive(ref client);
             Array.Resize(ref encodedImg, BitConverter.ToInt32(lenOfImage, 0));
-            clientSocket.Receive(encodedImg, 0, 1024, SocketFlags.None);
-            int offsetOfBuffer = 1024;
+            temperoryData = thisComputer.Receive(ref client);
+            for(int i=offsetOfBuffer; i<offsetOfBuffer+1024; i++)
+            {
+                encodedImg[i] = temperoryData[i];
+            }
+            offsetOfBuffer += 1024;
             int lengthOfImg = BitConverter.ToInt32(encodedImg, 0);
 
             while (encodedImg.Length + 1024 < lengthOfImg)
             {
-                clientSocket.Receive(encodedImg, offsetOfBuffer, 1024, SocketFlags.None);
+                thisComputer.Receive(encodedImg, offsetOfBuffer, 1024, SocketFlags.None);
                 offsetOfBuffer += 1024;
                 lengthOfImg = BitConverter.ToInt32(encodedImg, 0);
             }
 
-            clientSocket.Receive(encodedImg, offsetOfBuffer, BitConverter.ToInt32(encodedImg, 0) - lengthOfImg, SocketFlags.None);
+            thisComputer.Receive(encodedImg, offsetOfBuffer, BitConverter.ToInt32(encodedImg, 0) - lengthOfImg, SocketFlags.None);
             byte[] decodedImg = Convert.FromBase64String(Encoding.Default.GetString(encodedImg));
             Image img = ConvertByteArrayToImage(decodedImg);
             return img;
         }
-
-
 
         private Image ConvertByteArrayToImage(byte[] byteArrayImg)
         {
@@ -85,17 +91,8 @@ namespace teacher_gui_windows_forms
             msImage.Dispose();
             return theImage;
         }
-
-        private void AddImage(IPEndPoint clientSocket)
-        {
-            while (true)
-            {
-                clientSocket.Receive()
-            }
-        }
         
-        public void AddImage(Image image)
->>>>>>> origin/master
+        public void AddImage(UdpClient thisComputer, IPEndPoint client)
         {
             ///<summary>
             ///When a new client is added his image is added
@@ -103,9 +100,7 @@ namespace teacher_gui_windows_forms
             ///</summary>
             ///<param name="image">An image.</param>
             ///<returns>Void</returns>
-            byte[] ipArray = new byte[32];
-            clientSocket.Receive(ipArray);
-            string ip = BitConverter.ToString(ipArray);
+            thisComputer.Receive(ref client);
             Image image = GetAnImage(clientSocket);
             form.ImageList1.Images.Add(image);
             form.ListView1.Items.Add(new ListViewItem(ip, form.ImageList1.Images.Count - 1));
@@ -137,25 +132,26 @@ namespace teacher_gui_windows_forms
     class ForStream
     {
         //This class if for the thread get stream to use.
-        Socket clientSocket;
-        SessionWithServer s;
+        UdpClient clientSocket;
+        SessionWithServer mainClass;
 
-        public ForStream(Socket clientSocket, SessionWithServer s)
+        public ForStream(UdpClient clientSocket, SessionWithServer mainClass)
         {
             this.clientSocket = clientSocket;
-            this.s = s;
+            this.mainClass = mainClass;
         }
 
         public void GetStream()
         {
             byte[] lenOfImage = new byte[7];
             byte[] encodedImg = new byte[0];
-            byte[] ipArray = new byte[32];
+
+
             while (true)
             {
-                clientSocket.Receive(ipArray);
-                Image img = s.GetAnImage(clientSocket);
-                s.ChangeImage(img, BitConverter.ToString(ipArray));
+                clientSocket.Receive();
+                Image img = mainClass.GetAnImage(clientSocket);
+                mainClass.ChangeImage(img, BitConverter.ToString(ipArray));
             }
         }
     }
