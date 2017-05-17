@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,52 +11,87 @@ using System.Net.Sockets;
 using System.Windows.Forms;
 using System.Threading;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace teacher_gui_windows_forms
 {
     class SessionWithServer
     {
         private int localPort = 1027;
-        private int streamPort = 1029;
+        private int localStreamPort = 1028;
         private string localHost = "127.0.0.1";
         private TeacherGUI form;
-        private Socket mainSocket;
-        private Socket serverStreamSocket;
-        private Socket clientStreamSocket;
+        public Socket guiCommandSocket;
+        public Socket guiStreamSocket;
+        public Socket streamSocket;
+        public Socket commandSocket;
 
         public SessionWithServer(TeacherGUI form)
         {
             ///<summary>
             ///The structive function.
             ///</summary>
-            ///<param name="form">The GUI..</param>
-            mainSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            mainSocket.Connect(localHost, streamPort);
-
-            serverStreamSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            serverStreamSocket.Listen(1);
-
+            ///<param name="form">The GUI.</param>
             this.form = form;
+            this.form.ListView1.SmallImageList = this.form.ImageList1;
+
+            IPEndPoint commandIPEndPoint = new IPEndPoint(IPAddress.Parse(localHost), localPort);
+            guiCommandSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            guiCommandSocket.Bind(commandIPEndPoint);
+            guiCommandSocket.Listen(1);
+
+            IPEndPoint streamIPEndPoint = new IPEndPoint(IPAddress.Parse(localHost), localStreamPort);
+            guiStreamSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            guiStreamSocket.Bind(streamIPEndPoint);
+            guiStreamSocket.Listen(1);
+
+            Console.WriteLine("waiting fot command socket to connect");
+            commandSocket = guiCommandSocket.Accept();
+            Console.WriteLine("command socket accepted");
+
+
+            Thread waitingFotClients = new Thread(new ThreadStart(AddClient));
+            waitingFotClients.Start();
+            Console.WriteLine("Thread started");
+        }
+
+        public void AddListItemMethod(string ip)
+        {
+            ListViewItem listImage = new ListViewItem(ip, form.ImageList1.Images.Count - 1);
+            form.ListView1.Items.Add(listImage);
+            listImage.ImageKey = ip;
+            form.ListView1.Update();
         }
 
         public void AddClient()
         {
             ///<summary>
-            ///Connects another socket for another client with the server.
-            ///Adds the socket to the clientsSockets.
+            ///A function for a Threads.
+            ///The streamSocket waits for a new client to connect.
+            ///Connects another client with the server for stream.
+            ///And starts the stream for the client with a thread.
             ///</summary>
             ///<returns>Void</returns>
-            
+
             byte[] clientIP = new byte[32];
 
-            clientStreamSocket = serverStreamSocket.Accept();
+            while (true)
+            {
+                Console.WriteLine("waiting for client");
+                streamSocket = guiStreamSocket.Accept();
+                Console.WriteLine("client accepted");
 
-            clientStreamSocket.Receive(clientIP);
-            AddImage(BitConverter.ToString(clientIP));
+                streamSocket.Receive(clientIP);
+                string stringIP = Encoding.Default.GetString(clientIP);
+                Console.WriteLine("got client's ip: " + stringIP);
 
-            ForStream SocketToUse = new ForStream(clientStreamSocket, this);
-            Thread stream = new Thread(new ThreadStart(SocketToUse.GetStream));
-            stream.Start();
+                Thread.Sleep(50);
+                AddImage(stringIP);
+
+                ForStream SocketToUse = new ForStream(streamSocket, this);
+                Thread stream = new Thread(new ThreadStart(SocketToUse.GetStream));
+                stream.Start();
+            }
         }
 
         public Image GetAnImage()
@@ -64,53 +99,47 @@ namespace teacher_gui_windows_forms
             byte[] lenOfImage = new byte[7];
             byte[] temporaryData = new byte[1024];
             byte[] encodedImg = new byte[0];
-            int offsetOfBuffer = 0;
+            int bytesReceived = 0;
 
-            clientStreamSocket.Receive(lenOfImage);
-            Array.Resize(ref encodedImg, BitConverter.ToInt32(lenOfImage, 0));
-
-            clientStreamSocket.Receive(temporaryData, offsetOfBuffer, 1024, SocketFlags.None);
-            for(int i=offsetOfBuffer; i<offsetOfBuffer+1024; i++)
+            streamSocket.Receive(lenOfImage, 0, 7, SocketFlags.None);
+            int imageLength = Convert.ToInt32(Encoding.Default.GetString(lenOfImage));
+            Console.WriteLine(imageLength);
+            Array.Resize(ref encodedImg, imageLength);
+            while (bytesReceived < imageLength)
             {
-                encodedImg[i] = temporaryData[i];
-            }
-            offsetOfBuffer += 1024;
-            while (encodedImg.Count() + 1024 < BitConverter.ToInt32(lenOfImage, 0))
-            {
-                clientStreamSocket.Receive(temporaryData, offsetOfBuffer, 1024, SocketFlags.None);
-                for (int i = offsetOfBuffer; i < offsetOfBuffer + 1024; i++)
-                {
-                    encodedImg[i] = temporaryData[i];
-                }
-                offsetOfBuffer += 1024;
+                bytesReceived += streamSocket.Receive(encodedImg, bytesReceived, Math.Min(1024, imageLength - bytesReceived), SocketFlags.None);
             }
 
-            clientStreamSocket.Receive(encodedImg, offsetOfBuffer, BitConverter.ToInt32(encodedImg, 0) - encodedImg.Count(), SocketFlags.None);
-
-            byte[] decodedImg = Convert.FromBase64String(Encoding.Default.GetString(encodedImg));
-            Image img = ConvertByteArrayToImage(decodedImg);
-            return img;
+            byte[] decodedImg = new byte[bytesReceived];
+            FromBase64Transform transfer = new FromBase64Transform();
+            transfer.TransformBlock(encodedImg, 0, bytesReceived, decodedImg, 0);
+            Console.WriteLine(decodedImg.Length);
+            Console.WriteLine(Encoding.Default.GetString(decodedImg));
+            using (var ms = new MemoryStream(decodedImg))
+            {
+                return Image.FromStream(ms);
+            }
         }
 
-        private Image ConvertByteArrayToImage(byte[] byteArrayImg)
-        {
-            MemoryStream msImage = new MemoryStream(byteArrayImg);
-            Image theImage = Image.FromStream(msImage);
-            msImage.Dispose();
-            return theImage;
-        }
-        
         public void AddImage(string ip)
-        {
+         {
             ///<summary>
             ///When a new client is added his image is added
             ///to the ImageList thus appear on the gui.
             ///</summary>
-            ///<param name="image">An image.</param>
+            ///<param name="ip">An ip of a client in string.</param>
             ///<returns>Void</returns>
+            Console.WriteLine("adding image");
             Image image = GetAnImage();
-            form.ImageList1.Images.Add(image);
-            form.ListView1.Items.Add(new ListViewItem(ip, form.ImageList1.Images.Count - 1));
+            Console.WriteLine(image);
+            form.ImageList1.Images.Add(ip, image);
+            form.ListView1.Invoke(new MethodInvoker(delegate
+            {
+                AddListItemMethod(ip);
+                //ListViewItem newImage = form.ListView1.Items.Add(ip);
+                //newImage.ImageKey = ip;
+                //form.ListView1.Update();
+            }));
         }
 
         public void ChangeImage(Image image, string ip)
@@ -122,16 +151,18 @@ namespace teacher_gui_windows_forms
             ///<param name="ip">Am ip of a client.</param>
             ///<returns>Void</returns>
             int i = 0;
-            foreach (ListViewItem item in form.ListView1.Items)
+            form.ListView1.Invoke(new MethodInvoker(delegate
             {
-                if (item.Text.Equals(ip))
+                foreach (ListViewItem item in form.ListView1.Items)
                 {
-                    form.ImageList1.Images[i] = image;
-                    break;
+                    if (item.Text.Equals(ip))
+                    {
+                        form.ImageList1.Images[i] = image;
+                        break;
+                    }
+                    i++;
                 }
-                i++;
-            }
-
+            }));
         }
 
     }
@@ -139,12 +170,12 @@ namespace teacher_gui_windows_forms
     class ForStream
     {
         //This class if for the thread get stream to use.
-        Socket clientSocket;
+        Socket streamSocket;
         SessionWithServer mainClass;
 
-        public ForStream(Socket clientSocket, SessionWithServer mainClass)
+        public ForStream(Socket streamSocket, SessionWithServer mainClass)
         {
-            this.clientSocket = clientSocket;
+            this.streamSocket = streamSocket;
             this.mainClass = mainClass;
         }
 
@@ -153,9 +184,49 @@ namespace teacher_gui_windows_forms
             byte[] clientIP = new byte[32];
             while (true)
             {
-                clientSocket.Receive(clientIP);
+                streamSocket.Receive(clientIP);
                 Image img = mainClass.GetAnImage();
-                mainClass.ChangeImage(img, BitConverter.ToString(clientIP));
+                mainClass.ChangeImage(img, Encoding.Default.GetString(clientIP));
+            }
+        }
+    }
+
+    class ForThread
+    {
+        SessionWithServer sessionWithServerClass;
+
+        public ForThread(SessionWithServer sessionWithServerClass)
+        {
+            this.sessionWithServerClass = sessionWithServerClass;
+        }
+
+        public void AddClient()
+        {
+            ///<summary>
+            ///A function for a Threads.
+            ///The streamSocket waits for a new client to connect.
+            ///Connects another client with the server for stream.
+            ///And starts the stream for the client with a thread.
+            ///</summary>
+            ///<returns>Void</returns>
+
+            byte[] clientIP = new byte[32];
+
+            while (true)
+            {
+                Console.WriteLine("waiting for client");
+                sessionWithServerClass.streamSocket = sessionWithServerClass.guiStreamSocket.Accept();
+                Console.WriteLine("client accepted");
+
+                Console.WriteLine("waiting for client's ip");
+                sessionWithServerClass.streamSocket.Receive(clientIP);
+                Console.WriteLine("got client's ip");
+                sessionWithServerClass.AddImage(BitConverter.ToString(clientIP));
+
+
+                ForStream SocketToUse = new ForStream(sessionWithServerClass.streamSocket, sessionWithServerClass);
+                Thread stream = new Thread(new ThreadStart(SocketToUse.GetStream));
+                stream.Start();
             }
         }
     }
