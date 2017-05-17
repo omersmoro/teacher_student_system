@@ -94,14 +94,14 @@ class SessionWithServer(object):
         """
         while True:
             image = self.screen_shot()
-            print base64.b64decode(image)
+            #print image
             len_of_img = str(len(image))
             print len_of_img
             self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
             while image:
                 self.stream_socket.sendto(image[:1024], (SERVER_IP, STREAM_PORT))
                 image = image[1024:]
-            time.sleep(3)
+            time.sleep(1)
 
     @staticmethod
     def screen_shot():
@@ -113,8 +113,8 @@ class SessionWithServer(object):
         screen_shot_string_io = StringIO.StringIO()
         ImageGrab.grab().save(screen_shot_string_io, "PNG")
         screen_shot_string_io.seek(0)
-        return base64.b64encode(screen_shot_string_io.getvalue())
-        #return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
+        #return base64.b64encode(screen_shot_string_io.getvalue())
+        return screen_shot_string_io.read()
 
     @staticmethod
     def receive_stream_from_server(img_data):
