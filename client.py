@@ -8,6 +8,11 @@ import StringIO
 import base64
 import pickle
 import Tkinter
+import wx
+import win32gui
+import win32ui
+import win32con
+import win32api
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 1025
@@ -23,7 +28,7 @@ class Client(object):
     def __init__(self):
         self.socket = socket.socket()
         self.stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_functions_class = SessionWithServer(self.socket, self.stream_socket)
+        self.session_with_server_class = SessionWithServer(self.socket, self.stream_socket)
 
     def start(self):
         """
@@ -35,7 +40,7 @@ class Client(object):
         """
         Opens a thread (self.server_functions_class.receive_msg_from_server_thread).
         """
-        receiving_msg_from_server_thread = Thread(target=self.server_functions_class.receive_msg_from_server_thread)
+        receiving_msg_from_server_thread = Thread(target=self.session_with_server_class.receive_msg_from_server_thread)
         receiving_msg_from_server_thread.start()
 
 
@@ -78,8 +83,8 @@ class SessionWithServer(object):
             if data_from_server == "freeze":
                 mouse_lock()
                 keyboard_lock()
-                server_stream = Thread(target=self.receive_stream_from_server(), args=[])
-                server_stream.start()
+                #server_stream = Thread(target=self.receive_stream_from_server(), args=[])
+                #server_stream.start()
             else:
                 print data_from_server
 
@@ -89,9 +94,14 @@ class SessionWithServer(object):
         """
         while True:
             image = self.screen_shot()
-            len_of_img = len(image)
+            print base64.b64decode(image)
+            len_of_img = str(len(image))
+            print len_of_img
             self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
-            self.stream_socket.sendto(image, (SERVER_IP, STREAM_PORT))
+            while image:
+                self.stream_socket.sendto(image[:1024], (SERVER_IP, STREAM_PORT))
+                image = image[1024:]
+            time.sleep(3)
 
     @staticmethod
     def screen_shot():
@@ -101,9 +111,10 @@ class SessionWithServer(object):
         Return: The data of the image (encoded).
         """
         screen_shot_string_io = StringIO.StringIO()
-        ImageGrab.grab().save(string_io, "JPEG")
+        ImageGrab.grab().save(screen_shot_string_io, "PNG")
         screen_shot_string_io.seek(0)
-        return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
+        return base64.b64encode(screen_shot_string_io.getvalue())
+        #return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
 
     @staticmethod
     def receive_stream_from_server(img_data):
@@ -139,7 +150,9 @@ def keyboard_lock():
 if __name__ == "__main__":
     client = Client()
     client.start()
+    client.session_with_server_class.send_stream()
 
+"""
     string_io = StringIO.StringIO()
     ImageGrab.grab().save(string_io, "JPEG")
     #image_file = StringIO.StringIO(open(string_io.getvalue(), 'rb').read())
@@ -151,3 +164,4 @@ if __name__ == "__main__":
     logo = Tkinter.PhotoImage(file='images.jpg')
     canvas.create_image(0, 0, image=logo) #Change 0, 0 to whichever coordinates you need
     root.mainloop()
+"""
