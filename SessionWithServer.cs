@@ -33,7 +33,7 @@ namespace teacher_gui_windows_forms
             ///</summary>
             ///<param name="form">The GUI.</param>
             this.form = form;
-            this.form.ListView1.SmallImageList = this.form.ImageList1;
+            this.form.ListView1.LargeImageList = this.form.ImageList1;
 
             IPEndPoint commandIPEndPoint = new IPEndPoint(IPAddress.Parse(localHost), localPort);
             guiCommandSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -109,12 +109,6 @@ namespace teacher_gui_windows_forms
                 bytesReceived += streamSocket.Receive(encodedImg, bytesReceived, Math.Min(1024, imageLength - bytesReceived), SocketFlags.None);
             }
 
-            //Console.WriteLine(Encoding.Default.GetString(encodedImg));
-            //byte[] decodedImg = new byte[bytesReceived];
-            //FromBase64Transform transfer = new FromBase64Transform();
-            //transfer.TransformBlock(encodedImg, 0, bytesReceived, decodedImg, 0);
-            //Console.WriteLine(decodedImg.Length);
-            //Console.WriteLine(Encoding.Default.GetString(decodedImg));
             using (var ms = new MemoryStream(encodedImg))
             {
                 return Image.FromStream(ms);

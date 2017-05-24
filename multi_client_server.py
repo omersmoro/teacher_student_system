@@ -157,7 +157,7 @@ class SessionWithClient(object):
         screen_shot_string_io = StringIO.StringIO()
         ImageGrab.grab().save(screen_shot_string_io, "PNG")
         screen_shot_string_io.seek(0)
-        return base64.b64encode(screen_shot_string_io.getvalue(), 'utf-8')
+        return screen_shot_string_io.read()
 
     @staticmethod
     def change_int_to_7_length(num):
@@ -166,7 +166,6 @@ class SessionWithClient(object):
         Output: The number (string).
         Description: Changes the number length to 8 by adding 0s to the start of it
         """
-
         while len(num) < 7:
             num = "0" + str(num)
         return num
