@@ -7,8 +7,6 @@ import time
 import StringIO
 import base64
 import pickle
-import Tkinter
-import wx
 import win32gui
 import win32ui
 import win32con
@@ -94,13 +92,19 @@ class SessionWithServer(object):
         """
         while True:
             image = self.screen_shot()
-            len_of_img = str(len(image))
-            print len_of_img
-            self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
-            while image:
-                self.stream_socket.sendto(image[:1024], (SERVER_IP, STREAM_PORT))
-                image = image[1024:]
-            #time.sleep(0.1)
+            if type(len(image)) == int:
+                len_of_img = str(len(image))
+                print len_of_img
+                self.stream_socket.sendto(len_of_img, (SERVER_IP, STREAM_PORT))
+                time.sleep(0.03)
+                while image:
+                    self.stream_socket.sendto(image[:1024], (SERVER_IP, STREAM_PORT))
+                    image = image[1024:]
+                time.sleep(0.03)
+            else:
+                print type(len(image))
+                time.sleep(0.03)
+
 
     @staticmethod
     def screen_shot():
@@ -148,17 +152,3 @@ if __name__ == "__main__":
     client = Client()
     client.start()
     client.session_with_server_class.send_stream()
-
-"""
-    string_io = StringIO.StringIO()
-    ImageGrab.grab().save(string_io, "JPEG")
-    #image_file = StringIO.StringIO(open(string_io.getvalue(), 'rb').read())
-    #im = Image.open(image_file)
-    print string_io.getvalue()
-    root = Tkinter.Tk()
-    canvas = Tkinter.Canvas(root, width =1224,height=1000)
-    ImageGrab.grab()
-    logo = Tkinter.PhotoImage(file='images.jpg')
-    canvas.create_image(0, 0, image=logo) #Change 0, 0 to whichever coordinates you need
-    root.mainloop()
-"""

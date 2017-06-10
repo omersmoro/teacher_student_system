@@ -59,7 +59,7 @@ class Server(object):
                 client_address = client_address[0]
 
                 receiving_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                receiving_stream_socket.bind((LOCAL_IP, LOCAL_STREAM_PORT))
+                receiving_stream_socket.bind((SERVER_IP, LOCAL_STREAM_PORT))
 
                 self.session_with_gui_class.stream_socket.connect((LOCAL_IP, LOCAL_STREAM_PORT))
 
@@ -109,16 +109,20 @@ class SessionWithClient(object):
         """
         client_stream_socket = client_data.receiving_stream_socket
         while True:
-            len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
-            len_of_img = self.change_int_to_7_length(len_of_img)
-            img = self.get_full_size_data(int(len_of_img), client_stream_socket)
-            print len(img)
-            self.session_with_gui_class.stream_socket.send(client_data.address)
-            time.sleep(0.1)
-            self.session_with_gui_class.stream_socket.send(len_of_img)
-            while img:
-                self.session_with_gui_class.stream_socket.send(img[:1024])
-                img = img[1024:]
+            try:
+                len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
+                len_of_img = self.change_int_to_7_length(len_of_img)
+                print len_of_img
+                img = self.get_full_size_data(int(len_of_img), client_stream_socket)
+
+                self.session_with_gui_class.stream_socket.send(client_data.address)
+                time.sleep(0.03)
+                self.session_with_gui_class.stream_socket.send(len_of_img)
+                while img:
+                    self.session_with_gui_class.stream_socket.send(img[:1024])
+                    img = img[1024:]
+            except ValueError:
+                print ValueError
 
     def send_a_msg_to_a_client(self, ip, text):
         """

@@ -1,6 +1,6 @@
 ﻿namespace teacher_gui_windows_forms
 {
-    partial class TeacherGUI
+    partial class StudentForm
     {
         /// <summary>
         /// Required designer variable.
@@ -28,34 +28,35 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.studentBox = new System.Windows.Forms.GroupBox();
+            this.pictureBoxImage = new System.Windows.Forms.PictureBox();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).BeginInit();
             this.SuspendLayout();
             // 
-            // studentBox
+            // pictureBoxImage
             // 
-            this.studentBox.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.studentBox.Location = new System.Drawing.Point(0, 297);
-            this.studentBox.Name = "studentBox";
-            this.studentBox.Size = new System.Drawing.Size(1459, 357);
-            this.studentBox.TabIndex = 2;
-            this.studentBox.TabStop = false;
-            this.studentBox.Text = "Students";
+            this.pictureBoxImage.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pictureBoxImage.Location = new System.Drawing.Point(0, 0);
+            this.pictureBoxImage.Name = "pictureBoxImage";
+            this.pictureBoxImage.Size = new System.Drawing.Size(747, 324);
+            this.pictureBoxImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBoxImage.TabIndex = 0;
+            this.pictureBoxImage.TabStop = false;
             // 
-            // TeacherGUI
+            // StudentForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1459, 666);
-            this.Controls.Add(this.studentBox);
-            this.Name = "TeacherGUI";
-            this.Text = "TeacherGUI";
-            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
-            this.Load += new System.EventHandler(this.TeacherGUI_Load);
+            this.ClientSize = new System.Drawing.Size(747, 324);
+            this.Controls.Add(this.pictureBoxImage);
+            this.Name = "StudentForm";
+            this.Text = "StudentForm1";
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxImage)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
-        public System.Windows.Forms.GroupBox studentBox;
+
+        private System.Windows.Forms.PictureBox pictureBoxImage;
     }
 }

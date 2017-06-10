@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Threading;
 using System.IO;
 using System.Security.Cryptography;
+using System.Diagnostics;
 
 namespace teacher_gui_windows_forms
 {
@@ -25,6 +26,9 @@ namespace teacher_gui_windows_forms
         public Socket guiStreamSocket;
         public Socket streamSocket;
         public Socket commandSocket;
+        private Process processPython;
+        private int count = 1;
+        StudentControl studentControl;
 
         public SessionWithServer(TeacherGUI form)
         {
@@ -32,8 +36,15 @@ namespace teacher_gui_windows_forms
             ///The structive function.
             ///</summary>
             ///<param name="form">The GUI.</param>
+            
+            processPython = new Process();
+            processPython.StartInfo.FileName = @"C:\Heights\PortableApps\PortablePython2.7.6.1\Python-Portable.exe";
+            processPython.StartInfo.Arguments = "multi_client_server.py";
+            processPython.StartInfo.WorkingDirectory = Application.StartupPath;
+            //processPython.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            processPython.Start();
+
             this.form = form;
-            this.form.ListView1.LargeImageList = this.form.ImageList1;
 
             IPEndPoint commandIPEndPoint = new IPEndPoint(IPAddress.Parse(localHost), localPort);
             guiCommandSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -53,14 +64,6 @@ namespace teacher_gui_windows_forms
             Thread waitingFotClients = new Thread(new ThreadStart(AddClient));
             waitingFotClients.Start();
             Console.WriteLine("Thread started");
-        }
-
-        public void AddListItemMethod(string ip)
-        {
-            ListViewItem listImage = new ListViewItem(ip, form.ImageList1.Images.Count - 1);
-            form.ListView1.Items.Add(listImage);
-            listImage.ImageKey = ip;
-            form.ListView1.Update();
         }
 
         public void AddClient()
@@ -101,17 +104,25 @@ namespace teacher_gui_windows_forms
             byte[] encodedImg = new byte[0];
             int bytesReceived = 0;
 
-            streamSocket.Receive(lenOfImage, 0, 7, SocketFlags.None);
-            int imageLength = Convert.ToInt32(Encoding.Default.GetString(lenOfImage));
-            Array.Resize(ref encodedImg, imageLength);
-            while (bytesReceived < imageLength)
+            try
             {
-                bytesReceived += streamSocket.Receive(encodedImg, bytesReceived, Math.Min(1024, imageLength - bytesReceived), SocketFlags.None);
-            }
+                streamSocket.Receive(lenOfImage, 0, 7, SocketFlags.None);
+                int imageLength = Convert.ToInt32(Encoding.Default.GetString(lenOfImage));
+                Array.Resize(ref encodedImg, imageLength);
+                while (bytesReceived < imageLength)
+                {
+                    bytesReceived += streamSocket.Receive(encodedImg, bytesReceived, Math.Min(1024, imageLength - bytesReceived), SocketFlags.None);
+                }
 
-            using (var ms = new MemoryStream(encodedImg))
+                using (var ms = new MemoryStream(encodedImg))
+                {
+                    var x = Image.FromStream(ms);
+                    return Image.FromStream(ms);
+                }
+            }
+            catch
             {
-                return Image.FromStream(ms);
+                return null;
             }
         }
 
@@ -125,10 +136,10 @@ namespace teacher_gui_windows_forms
             ///<returns>Void</returns>
             Console.WriteLine("adding image");
             Image image = GetAnImage();
-            form.ImageList1.Images.Add(ip, image);
-            form.ListView1.Invoke(new MethodInvoker(delegate
+            form.Invoke(new MethodInvoker(delegate
             {
-                AddListItemMethod(ip);
+                studentControl = new StudentControl(image, ip, count++);
+                form.studentBox.Controls.Add(studentControl);
             }));
         }
 
@@ -138,21 +149,23 @@ namespace teacher_gui_windows_forms
             ///Whenever a new image is received, this function changes the client's image to the current image.
             ///</summary>
             ///<param name="image">An image.</param>
-            ///<param name="ip">Am ip of a client.</param>
+            ///<param name="ip">An ip of a client.</param>
             ///<returns>Void</returns>
-            int i = 0;
-            form.ListView1.Invoke(new MethodInvoker(delegate
+  
+            form.Invoke(new MethodInvoker(delegate
             {
-                foreach (ListViewItem item in form.ListView1.Items)
+                foreach (Control control in form.studentBox.Controls)
                 {
-                    if (item.Text.Equals(ip))
+                    StudentControl studentControl = control as StudentControl;
+                    if (studentControl.labelIp.Text.Equals(ip))
                     {
-                        form.ImageList1.Images[i] = image;
-                        item.ImageIndex = i;
-                        form.ListView1.Refresh();
+                        if(studentControl.studentForm != null)
+                        {
+                            studentControl.studentForm.ChangeImage(image);
+                        }
+                        studentControl.ChangeImage(image);
                         break;
                     }
-                    i++;
                 }
             }));
         }
@@ -176,9 +189,17 @@ namespace teacher_gui_windows_forms
             byte[] clientIP = new byte[32];
             while (true)
             {
-                streamSocket.Receive(clientIP);
-                Image img = mainClass.GetAnImage();
-                mainClass.ChangeImage(img, Encoding.Default.GetString(clientIP));
+                try
+                {
+                    int len = streamSocket.Receive(clientIP);
+                    string lenStr = Encoding.Default.GetString(clientIP).Substring(0, len);
+                    Image img = mainClass.GetAnImage();
+                    mainClass.ChangeImage(img, lenStr);
+                }
+                catch
+                {
+                    
+                }
             }
         }
     }
