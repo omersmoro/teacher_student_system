@@ -46,5 +46,10 @@ namespace teacher_gui_windows_forms
             studentForm = new StudentForm(pictureBoxImage.Image, labelIp.Text);
             studentForm.ShowDialog();
         }
+
+        private void controlToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            command = "control";
+        }
     }
 }

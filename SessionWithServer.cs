@@ -99,6 +99,10 @@ namespace teacher_gui_windows_forms
 
         public Image GetAnImage()
         {
+            ///<summary>
+            ///Receives an image from the server.
+            ///</summary>
+            ///<returns>Image</returns>
             byte[] lenOfImage = new byte[7];
             byte[] temporaryData = new byte[1024];
             byte[] encodedImg = new byte[0];
@@ -169,6 +173,8 @@ namespace teacher_gui_windows_forms
                 }
             }));
         }
+
+        public void SendCommand()
 
     }
 
