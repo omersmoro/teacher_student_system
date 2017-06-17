@@ -15,10 +15,12 @@ namespace teacher_gui_windows_forms
         const int Num = 10;
         string message;
         public StudentForm studentForm = null;
+        private TeacherGUI form;
 
-        public StudentControl(Image image, string Ip, int index)
+        public StudentControl(TeacherGUI form, Image image, string Ip, int index)
         {
             InitializeComponent();
+            this.form = form;
             pictureBoxImage.Image = image;
             labelIp.Text = Ip;
             Location = new Point(index % Num * (Width + 10) - Width, index / Num * (Height + 5) + 30);
@@ -47,9 +49,10 @@ namespace teacher_gui_windows_forms
             studentForm.ShowDialog();
         }
 
-        private void controlToolStripMenuItem_Click(object sender, EventArgs e)
+
+        private void controlToolStripMenuItem_Click_1(object sender, EventArgs e)
         {
-            command = "control";
+            form.session.commandSocket.Send(Encoding.ASCII.GetBytes(labelIp.Text+ "#control"));
         }
     }
 }

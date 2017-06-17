@@ -11,6 +11,7 @@ import win32gui
 import win32ui
 import win32con
 import win32api
+import subprocess
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 1025
@@ -18,6 +19,7 @@ STREAM_TO_SERVER_PORT = 1026
 STREAM_FROM_SERVER_PORT = 1030
 
 LOCAL_IP = "127.0.0.1"
+CLIENT_IP = "0.0.0.0"
 
 GUI_STREAM_PORT = 1029
 
@@ -26,25 +28,23 @@ OK_DATA_LEN = 2
 OK_RESPONSE = "OK"
 NOT_OK_RESPONSE = "SOMETHING WENT WRONG"
 
+GUI_PATH = r"C:\Heights\Documents\Projects\teacher_student_system\student_gui_windows_forms\student_gui_windows_forms" \
+           r"\bin\Debug\student_gui_windows_forms.exe"
+
 
 class Client(object):
     def __init__(self):
         self.socket = socket.socket()
+        self.socket.connect((SERVER_IP, SERVER_PORT))
         self.stream_to_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         self.stream_from_server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.stream_from_server_socket.bind((SERVER_IP, STREAM_FROM_SERVER_PORT))
+        self.stream_from_server_socket.bind((CLIENT_IP, STREAM_FROM_SERVER_PORT))
 
         self.gui_server_socket = socket.socket()
         self.session_with_gui_class = SessionWithGui()
         self.session_with_server_class = SessionWithServer(self.socket, self.stream_to_server_socket,
                                                            self.stream_from_server_socket, self.session_with_gui_class)
-
-    def start(self):
-        """
-        Connecting to the server.
-        """
-        self.socket.connect((SERVER_IP, SERVER_PORT))
 
     def receiving_all_msgs(self):
         """
@@ -60,13 +60,16 @@ class SessionWithServer(object):
     The class holds the functions the clients use to communicate with the server.
     """
     def __init__(self, client_socket, stream_to_server_socket, stream_from_server_socket, session_with_gui):
-        self.socket = client_socket
+        self.data_socket = client_socket
         self.stream_to_server_socket = stream_to_server_socket
         self.stream_from_server_socket = stream_from_server_socket
         self.session_with_gui_class = session_with_gui
 
         receiving_stream_from_server = Thread(target=self.connecting_stream_from_server_to_gui)
         receiving_stream_from_server.start()
+
+        receiving_msg_from_server_thread = Thread(target=self.receive_msg_from_server_thread)
+        receiving_msg_from_server_thread.start()
 
     def waits_for_data_from_client_to_send_to_the_server(self):
         """
@@ -75,7 +78,7 @@ class SessionWithServer(object):
         Sends the data that received to the server.
         """
         while True:
-            self.socket.send(raw_input("insert your msg here..."))
+            self.data_socket.send(raw_input("insert your msg here..."))
 
     def get_full_size_data(self, data_len):
         """
@@ -91,17 +94,21 @@ class SessionWithServer(object):
 
     def receive_msg_from_server_thread(self):
         """
-        A function to a thread that waits for msgs from the server all the time.
+        A function for a thread that waits for msgs from the server all the time.
         """
         while True:
-            data_from_server = self.socket.recv(DATA_RECEIVED_SIZE)
+            data_from_server = self.data_socket.recv(DATA_RECEIVED_SIZE)
             if data_from_server == "control":
-                mouse_lock()
-                keyboard_lock()
-                connecting_stream_from_server_to_gui_thread = Thread(target=self.connecting_stream_from_server_to_gui())
+                self.session_with_gui_class.stream_socket.bind((LOCAL_IP, GUI_STREAM_PORT))
+                self.session_with_gui_class.stream_socket.listen(1)
+                subprocess.Popen(GUI_PATH)
+                #mouse_lock()
+                #keyboard_lock()
+                print "controlled"
+                connecting_stream_from_server_to_gui_thread = Thread(target=self.connecting_stream_from_server_to_gui)
                 connecting_stream_from_server_to_gui_thread.start()
             else:
-                print data_from_server
+                print 'data_from_server=',data_from_server
 
     def send_stream(self):
         """
@@ -111,7 +118,6 @@ class SessionWithServer(object):
             image = self.screen_shot()
             if type(len(image)) == int:
                 len_of_img = str(len(image))
-                print len_of_img
                 self.stream_to_server_socket.sendto(len_of_img, (SERVER_IP, STREAM_TO_SERVER_PORT))
                 time.sleep(0.03)
                 while image:
@@ -173,7 +179,6 @@ class SessionWithGui(object):
     """
     def __init__(self):
         self.stream_socket = socket.socket()
-        self.stream_socket.connect((LOCAL_IP, GUI_STREAM_PORT))
 
     def send_data(self, data):
         """
@@ -205,5 +210,4 @@ def keyboard_lock():
 
 if __name__ == "__main__":
     client = Client()
-    client.start()
     client.session_with_server_class.send_stream()

@@ -16,7 +16,7 @@ using System.Diagnostics;
 
 namespace teacher_gui_windows_forms
 {
-    class SessionWithServer
+    public class SessionWithServer
     {
         private int localPort = 1027;
         private int localStreamPort = 1028;
@@ -142,7 +142,7 @@ namespace teacher_gui_windows_forms
             Image image = GetAnImage();
             form.Invoke(new MethodInvoker(delegate
             {
-                studentControl = new StudentControl(image, ip, count++);
+                studentControl = new StudentControl(form, image, ip, count++);
                 form.studentBox.Controls.Add(studentControl);
             }));
         }
@@ -174,7 +174,7 @@ namespace teacher_gui_windows_forms
             }));
         }
 
-        public void SendCommand()
+        //public void SendCommand()
 
     }
 

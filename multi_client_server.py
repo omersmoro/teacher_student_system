@@ -58,13 +58,13 @@ class Server(object):
             if len(self.session_with_client_class.clients_data) < MAX_CLIENTS:
 
                 client_socket, client_address = self.server_socket.accept()
+
                 client_address = client_address[0]
 
                 receiving_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 receiving_stream_socket.bind((SERVER_IP, STREAM_FROM_CLIENT_PORT))
 
                 sending_stream_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sending_stream_socket.bind((SERVER_IP, STREAM_FROM_CLIENT_PORT))
 
                 print "new client"
                 self.session_with_client_class.open_chat(client_socket, client_address,
@@ -89,7 +89,6 @@ class SessionWithClient(object):
         Description: When a new client is connected to the server, 2 threads are
                      opened(self.receive_a_msg_from_a_client, self.connecting_stream_from_client_to_gui)
         """
-
         client_data = ClientData(client_socket, client_address, client_receiving_stream_socket, sending_stream_socket)
         self.clients_data.append(client_data)
 
@@ -114,9 +113,8 @@ class SessionWithClient(object):
             try:
                 len_of_img, client_address = client_stream_socket.recvfrom(DATA_RECEIVED_SIZE)
                 len_of_img = self.change_int_to_7_length(len_of_img)
-                print len_of_img
+                #print len_of_img
                 img = self.get_full_size_data(int(len_of_img), client_stream_socket)
-
                 self.session_with_gui_class.stream_socket.send(client_data.address)
                 time.sleep(0.03)
                 self.session_with_gui_class.stream_socket.send(len_of_img)
@@ -142,11 +140,11 @@ class SessionWithClient(object):
                 len_of_img = str(len(image))
                 print len_of_img
                 client_sending_stream_socket.sendto(len_of_img, (client_ip, STREAM_TO_CLIENT_PORT))
-                time.sleep(0.03)
+                time.sleep(0.09)
                 while image:
                     client_sending_stream_socket.sendto(image[:1024], (client_ip, STREAM_TO_CLIENT_PORT))
                     image = image[1024:]
-                time.sleep(0.03)
+                time.sleep(0.09)
             else:
                 print type(len(image))
                 time.sleep(0.03)
@@ -158,8 +156,9 @@ class SessionWithClient(object):
                      Uses another function to send that order to the specific client.
         """
         while True:
-            client_ip = self.session_with_gui_class.command_socket.recv(DATA_RECEIVED_SIZE)
-            order = self.session_with_gui_class.command_socket.recv(DATA_RECEIVED_SIZE)
+            data = self.session_with_gui_class.command_socket.recv(DATA_RECEIVED_SIZE)
+            client_ip = data.split('#')[0]
+            order = data.split('#')[1]
             self.give_order(client_ip, order)
 
     def give_order(self, ip, order):
@@ -172,6 +171,8 @@ class SessionWithClient(object):
             if client_data.address == ip:
                 client_socket = client_data.socket
         client_socket.send(order)
+        sending_stream = Thread(target=self.send_stream, args=[ip])
+        sending_stream.start()
 
     def send_a_msg_to_a_client(self, ip, text):
         """
